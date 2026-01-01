@@ -1,1 +1,0 @@
-rm ./Migrations ; dotnet-ef database drop --context 'IdentityContext'; dotnet-ef migrations add 'm1' ; dotnet-ef database update --context 'IdentityContext';

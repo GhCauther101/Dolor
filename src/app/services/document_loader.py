@@ -1,12 +1,11 @@
-import os, python_docs
-from docx import Document
+import os
 from langchain_chroma import Chroma
 from langchain_community.document_loaders import PDFPlumberLoader
 from langchain_community.document_loaders import TextLoader
 from langchain_core.documents import Document as LcDocument
 from langchain_community.document_loaders import UnstructuredHTMLLoader, UnstructuredEPubLoader, UnstructuredWordDocumentLoader
 from pptx import Presentation
-from app.services.service_utils import get_word_doc_page_break_count, safe_detect_language
+from app.services.service_utils import safe_detect_language
 
 class DocumentLoadResult:
     def __init__(self, extension, size, doc_length, chunks_length, langs):
