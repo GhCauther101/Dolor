@@ -1,9 +1,8 @@
 from flask import Blueprint, request
 from app.extensions import services
-from app.services.service_utils import compose_retrieval_chain, get_word_doc_page_break_count
+from app.services.service_utils import compose_retrieval_chain
 
 ai_app = Blueprint("ai", __name__, url_prefix="/ai")
-llm_service_instance = services.llm_service
 
 @ai_app.route("/ask_pdf", methods=["POST"])
 def aiPost():

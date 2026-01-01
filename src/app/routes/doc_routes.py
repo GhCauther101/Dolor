@@ -2,7 +2,6 @@ from flask import Blueprint, request
 from app.extensions import services
  
 doc_app = Blueprint("doc", __name__, url_prefix="/doc")
-llm_service_instance = services.llm_service
 
 @doc_app.route("/pdf", methods=["POST"])
 def pdfPost():
@@ -17,8 +16,9 @@ def pdfPost():
         "status": "success", 
         "filename": file_name,
         "size": pdf_load_result.size,
-        "doc_len":pdf_load_result.doc_length,
-        "chunks": pdf_load_result.chunks_length
+        "doc_len": pdf_load_result.doc_length,
+        "chunks": pdf_load_result.chunks_length,
+        "langs": pdf_load_result.lang
     }
 
     return resp

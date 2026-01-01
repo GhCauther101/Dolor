@@ -2,6 +2,7 @@ from langchain_classic.chains.combine_documents import create_stuff_documents_ch
 from langchain_classic.chains.retrieval import create_retrieval_chain
 from langchain_chroma import Chroma
 from langchain_ollama import OllamaLLM
+from langdetect import detect
 
 def compose_retrieval_chain(llm: OllamaLLM, raw_prompt: str, vector_store: Chroma):
     retriever = vector_store.as_retriever(
@@ -24,3 +25,18 @@ def get_word_doc_page_break_count(doc):
                 page_breaks += 1
 
     return page_breaks
+
+def safe_detect_language(chunks):
+    result = set()
+    min_chars=20
+
+    for chunk in chunks:
+        if not chunk.page_content or len(chunk.page_content.strip()) < min_chars:
+            continue
+        try:
+            result.add(detect(chunk.page_content))
+        except Exception:
+            continue
+    
+    return list(result)
+

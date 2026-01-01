@@ -10,9 +10,10 @@ class LlmService:
     def __init__(self):
         db_path = os.getenv("LOCAL_DB_PATH")
         model_name = os.getenv("LOCAL_OLLAMA_MODEL")
+        fast_embed_model = os.getenv("FAST_EMBED_MODEL")
 
         self.llm = OllamaLLM(model=model_name, temperature=0.4)
-        self.embedding = FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
+        self.embedding = FastEmbedEmbeddings(model_name=fast_embed_model)
         self.splitter = RecursiveCharacterTextSplitter(chunk_size=1024, chunk_overlap=20, is_separator_regex=False)
         self.document_loader = DocumentLoader(splitter=self.splitter, embedding=self.embedding, db_path=db_path)
 

@@ -5,15 +5,15 @@ from langchain_community.document_loaders import TextLoader
 from langchain_core.documents import Document as LcDocument
 from langchain_community.document_loaders import UnstructuredHTMLLoader, UnstructuredEPubLoader
 from pptx import Presentation
-from docx import Document
-from app.services.service_utils import get_word_doc_page_break_count
+from app.services.service_utils import get_word_doc_page_break_count, safe_detect_language
 
 class DocumentLoadResult:
-    def __init__(self, extension, size, doc_length, chunks_length):
+    def __init__(self, extension, size, doc_length, chunks_length, langs):
         self.extension = extension
         self.size = size
         self.doc_length = doc_length
         self.chunks_length = chunks_length
+        self.lang = langs
 
 class DocumentLoader:
     def __init__(self, splitter, embedding, db_path):
@@ -28,33 +28,30 @@ class DocumentLoader:
 
         size_bytes = os.path.getsize(path)
         chunks = self.text_splitter.split_text(txt)
+        langs = safe_detect_language(chunks=chunks)
 
-        vector_store = Chroma.from_texts(chunks=chunks, embedding=self.embedding, persist_directory=self.db_path)
-        # vector_store.persist()
-
-        return DocumentLoadResult(extension='txt', size=size_bytes, chunks_length=len(chunks))
+        Chroma.from_texts(chunks=chunks, embedding=self.embedding, persist_directory=self.db_path, langs=langs)
+        return DocumentLoadResult(extension='txt', size=size_bytes, chunks_length=len(chunks), langs=langs)
 
     def load_pdf(self, path) -> DocumentLoadResult:
         size_bytes = os.path.getsize(path)
         pdf_loader = PDFPlumberLoader(path)
         docs = pdf_loader.load_and_split()
         chunks = self.text_splitter.split_documents(docs)
-        
-        vector_store = Chroma.from_documents(documents=chunks, embedding=self.embedding, persist_directory=self.db_path)
-        # vector_store.persist()
+        langs = safe_detect_language(chunks=chunks)
 
-        return DocumentLoadResult(extension='pdf', size=size_bytes, doc_length=len(docs), chunks_length=len(chunks))
+        Chroma.from_documents(documents=chunks, embedding=self.embedding, persist_directory=self.db_path)
+        return DocumentLoadResult(extension='pdf', size=size_bytes, doc_length=len(docs), chunks_length=len(chunks), langs=langs)
 
     def load_epub(self, path) -> DocumentLoadResult:
         size_bytes = os.path.getsize(path)
         epub_loader = UnstructuredEPubLoader(path)
         docs = epub_loader.load()
         chunks = self.text_splitter.split_documents(docs)
+        langs = safe_detect_language(chunks=chunks)
 
-        vector_store = Chroma.from_documents(documents=chunks, embedding=self.embedding, persist_directory=self.db_path)
-        # vector_store.persist()
-        
-        return DocumentLoadResult(extension='epub', size=size_bytes, doc_length=len(docs), chunks_length=len(chunks))
+        Chroma.from_documents(documents=chunks, embedding=self.embedding, persist_directory=self.db_path)
+        return DocumentLoadResult(extension='epub', size=size_bytes, doc_length=len(docs), chunks_length=len(chunks), langs=langs)
 
     def load_docx(self, path) -> DocumentLoadResult:
         size_bytes = os.path.getsize(path)
@@ -62,11 +59,10 @@ class DocumentLoader:
         page_count = get_word_doc_page_break_count(document)
         text = '\n'.join([pr.text for pr in document.paragraphs if pr.text.strip()])
         chunks = self.text_splitter.split_text(text)
+        langs = safe_detect_language(chunks=chunks)
 
-        vector_store = Chroma.from_documents(documents=chunks, embedding=self.embedding, persist_directory=self.db_path)
-        # vector_store.persist()
-
-        return DocumentLoadResult(extension='docx', size=size_bytes, doc_length=page_count, chunks_length=len(chunks))
+        Chroma.from_documents(documents=chunks, embedding=self.embedding, persist_directory=self.db_path)
+        return DocumentLoadResult(extension='docx', size=size_bytes, doc_length=page_count, chunks_length=len(chunks), langs=langs)
 
     def load_pptx(self, path) -> DocumentLoadResult:
         size_bytes = os.path.getsize(path)
@@ -94,28 +90,27 @@ class DocumentLoader:
                 ))
 
         chunks = self.text_splitter.split_documents(documents=documents)
-        vector_store = Chroma.from_documents(documents=chunks, embedding=self.embedding, persist_directory=self.db_path)
-        # vector_store.persist()
+        langs = safe_detect_language(chunks=chunks)
 
-        return DocumentLoadResult(extension='pptx', size=size_bytes, doc_length=len(sld), chunks_length=len(chunks))
+        Chroma.from_documents(documents=chunks, embedding=self.embedding, persist_directory=self.db_path)
+        return DocumentLoadResult(extension='pptx', size=size_bytes, doc_length=len(sld), chunks_length=len(chunks), langs=langs)
 
-    def load_md(self, path):
+    def load_md(self, path) -> DocumentLoadResult:
         size_bytes = os.path.getsize(path)
         loader = TextLoader(path, encoding="utf-8")
         docs = loader.load_and_split()
         chunks = self.text_splitter.split_documents(docs)
+        langs = safe_detect_language(chunks=chunks)
 
-        vector_store = Chroma.from_documents(documents=chunks, embedding=self.embedding, persist_directory=self.db_path)
-        # vector_store.persist()
-        
-        return DocumentLoadResult(extension='md', size=size_bytes, doc_length=len(docs), chunks_length=len(chunks))
+        Chroma.from_documents(documents=chunks, embedding=self.embedding, persist_directory=self.db_path)        
+        return DocumentLoadResult(extension='md', size=size_bytes, doc_length=len(docs), chunks_length=len(chunks), langs=langs)
 
-    def load_html(self, path):
+    def load_html(self, path) -> DocumentLoadResult:
         size_bytes = os.path.getsize(path)
         loader = UnstructuredHTMLLoader(path)
         docs = loader.load()
         chunks = self.text_splitter.split_documents(documents=docs)
-        vector_store = Chroma.from_documents(documents=chunks, embedding=self.embedding, persist_directory=self.db_path)
-        # vector_store.persist()
+        langs = safe_detect_language(chunks=chunks)
 
-        return DocumentLoadResult(extension='html', size=size_bytes, doc_length=len(docs), chunks_length=len(chunks))
+        Chroma.from_documents(documents=chunks, embedding=self.embedding, persist_directory=self.db_path)
+        return DocumentLoadResult(extension='html', size=size_bytes, doc_length=len(docs), chunks_length=len(chunks), langs=langs)
