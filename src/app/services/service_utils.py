@@ -26,17 +26,25 @@ def get_word_doc_page_break_count(doc):
 
     return page_breaks
 
+
+def perform_lang_detect(raw):
+    try:
+        return detect(raw)
+    except Exception:
+        pass
+
 def safe_detect_language(chunks):
     result = set()
     min_chars=20
 
     for chunk in chunks:
-        if not chunk.page_content or len(chunk.page_content.strip()) < min_chars:
+        if isinstance(chunk, str):
+            result.add(perform_lang_detect(chunk))
             continue
-        try:
-            result.add(detect(chunk.page_content))
-        except Exception:
-            continue
-    
+
+        if chunk.page_content or len(chunk.page_content.strip()) >= min_chars:        
+            result.add(perform_lang_detect(chunk.page_content))
+        else: continue
+
     return list(result)
 

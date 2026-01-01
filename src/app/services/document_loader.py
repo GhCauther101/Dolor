@@ -1,9 +1,10 @@
-import os
+import os, python_docs
+from docx import Document
 from langchain_chroma import Chroma
 from langchain_community.document_loaders import PDFPlumberLoader
 from langchain_community.document_loaders import TextLoader
 from langchain_core.documents import Document as LcDocument
-from langchain_community.document_loaders import UnstructuredHTMLLoader, UnstructuredEPubLoader
+from langchain_community.document_loaders import UnstructuredHTMLLoader, UnstructuredEPubLoader, UnstructuredWordDocumentLoader
 from pptx import Presentation
 from app.services.service_utils import get_word_doc_page_break_count, safe_detect_language
 
@@ -27,11 +28,11 @@ class DocumentLoader:
             txt = f.read()
 
         size_bytes = os.path.getsize(path)
-        chunks = self.text_splitter.split_text(txt)
-        langs = safe_detect_language(chunks=chunks)
+        texts = self.text_splitter.split_text(txt)
+        langs = safe_detect_language(chunks=texts)
 
-        Chroma.from_texts(chunks=chunks, embedding=self.embedding, persist_directory=self.db_path, langs=langs)
-        return DocumentLoadResult(extension='txt', size=size_bytes, chunks_length=len(chunks), langs=langs)
+        Chroma.from_texts(texts=texts, embedding=self.embedding, persist_directory=self.db_path)
+        return DocumentLoadResult(extension='txt', size=size_bytes, doc_length=-1, chunks_length=len(texts), langs=langs)
 
     def load_pdf(self, path) -> DocumentLoadResult:
         size_bytes = os.path.getsize(path)
@@ -55,14 +56,15 @@ class DocumentLoader:
 
     def load_docx(self, path) -> DocumentLoadResult:
         size_bytes = os.path.getsize(path)
-        document = python_docs.Document(path)
-        page_count = get_word_doc_page_break_count(document)
-        text = '\n'.join([pr.text for pr in document.paragraphs if pr.text.strip()])
-        chunks = self.text_splitter.split_text(text)
+
+        # doc = LcDocument(path)
+        loader = UnstructuredWordDocumentLoader(path)
+        docs = loader.load()
+        chunks = self.text_splitter.split_documents(docs)
         langs = safe_detect_language(chunks=chunks)
 
         Chroma.from_documents(documents=chunks, embedding=self.embedding, persist_directory=self.db_path)
-        return DocumentLoadResult(extension='docx', size=size_bytes, doc_length=page_count, chunks_length=len(chunks), langs=langs)
+        return DocumentLoadResult(extension='docx', size=size_bytes, doc_length=1, chunks_length=len(chunks), langs=langs)
 
     def load_pptx(self, path) -> DocumentLoadResult:
         size_bytes = os.path.getsize(path)
@@ -78,7 +80,7 @@ class DocumentLoader:
                 for prg in shape.text_frame.paragraphs:
                     text = prg.text.strip()
                     if text:
-                        slide_text.appen(text)
+                        slide_text.append(text)
             
             if slide_text:
                 documents.append(
@@ -93,7 +95,7 @@ class DocumentLoader:
         langs = safe_detect_language(chunks=chunks)
 
         Chroma.from_documents(documents=chunks, embedding=self.embedding, persist_directory=self.db_path)
-        return DocumentLoadResult(extension='pptx', size=size_bytes, doc_length=len(sld), chunks_length=len(chunks), langs=langs)
+        return DocumentLoadResult(extension='pptx', size=size_bytes, doc_length=len(presentation.slides), chunks_length=len(chunks), langs=langs)
 
     def load_md(self, path) -> DocumentLoadResult:
         size_bytes = os.path.getsize(path)
