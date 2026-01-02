@@ -26,3 +26,6 @@ class LlmService:
             """)
         
         self.vector_store = Chroma(persist_directory=db_path, embedding_function=self.embedding)
+
+    def get_session_vector_store(self, db_path):
+        return Chroma(persist_directory=db_path, embedding_function=self.embedding)
