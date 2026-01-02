@@ -1,14 +1,44 @@
-import os
-import json
-import uuid
 from flask import Blueprint, request
 from app.extensions import services
+from app.services.service_utils import compose_retrieval_chain
 from app.routes.routes_utils import *
+import shutil
  
-doc_app = Blueprint("doc", __name__, url_prefix="/doc")
+doc_app = Blueprint("session", __name__, url_prefix="/doc")
 
-@doc_app.route("/session", methods=["POST"])
-def sessionPost():
+@doc_app.route("/ask_agent/<session_id>", methods=["GET"])
+def aiSessionGET(session_id):
+    json_content = request.json
+    query = json_content.get("query") if json_content else None
+    session_dir = "db/sessions/" + session_id
+
+    chain = compose_retrieval_chain(
+        llm=services.llm_service.llm,
+        vector_store=services.llm_service.get_session_vector_store(db_path=session_dir),
+        raw_prompt=services.llm_service.prompt_template
+    )
+
+    result = chain.invoke({"input" : query})
+
+    sources = []
+    for doc in result["context"]:
+        sources.append({ "source": doc.metadata["source"], "page_content": doc.page_content })
+
+    return {"response": result["answer"], "sources": sources}
+
+@doc_app.route("/upload", methods=["DELETE"])
+def sessionDELETE(session_id):
+    json_content = request.json
+    session_dir = "db/sessions/" + session_id
+
+    shutil.rmtree(session_dir)
+    return {
+        "session_id": session_id,
+        "message": "session storage deleted"
+    }
+
+@doc_app.route("/upload", methods=["POST"])
+def sessionPOST():
     data = extract_json(request_object=request)
     upload_files = extract_files(request_object=request)
     session_id, session_dir = create_session_folder()
@@ -38,131 +68,5 @@ def sessionPost():
             "chunks": load_result.chunks_length,
             "langs": load_result.lang
         })
-
-    return resp
-
-@doc_app.route("/txt", methods=["POST"])
-def txtPost():
-    dir_path = "db/txt/"
-    file = extract_file(request_object=request)
-    save_path = process_file(dir_path=dir_path, filename=file.filename)
-    pdf_load_result = services.llm_service.document_loader.load_txt(save_path)
-
-    resp = {
-        "status": "success", 
-        "filename": file.filename,
-        "size": pdf_load_result.size,
-        "doc_len": pdf_load_result.doc_length,
-        "chunks": pdf_load_result.chunks_length,
-        "langs": pdf_load_result.lang
-    }
-
-    return resp
-
-@doc_app.route("/pdf", methods=["POST"])
-def pdfPost():
-    file = extract_file(request_object=request)
-    dir_path = "db/pdf/"
-    save_path = process_file(dir_path=dir_path, filename=file.filename)
-    pdf_load_result = services.llm_service.document_loader.load_pdf(save_path)
-
-    resp = {
-        "status": "success", 
-        "filename": file.filename,
-        "size": pdf_load_result.size,
-        "doc_len": pdf_load_result.doc_length,
-        "chunks": pdf_load_result.chunks_length,
-        "langs": pdf_load_result.lang
-    }
-
-    return resp
-
-@doc_app.route("/epub", methods=["POST"])
-def epubPost():
-    file = extract_file(request_object=request)
-    dir_path = "db/epub/"    
-    save_path = process_file(dir_path=dir_path, filename=file.filename)
-    pdf_load_result = services.llm_service.document_loader.load_epub(save_path)
-
-    resp = {
-        "status": "success", 
-        "filename": file.filename,
-        "size": pdf_load_result.size,
-        "doc_len": pdf_load_result.doc_length,
-        "chunks": pdf_load_result.chunks_length,
-        "langs": pdf_load_result.lang
-    }
-
-    return resp
-
-@doc_app.route("/docx", methods=["POST"])
-def docxPost():
-    file = extract_file(request_object=request)
-    dir_path = "db/docx/"
-    save_path = process_file(dir_path=dir_path, filename=file.filename)
-    pdf_load_result = services.llm_service.document_loader.load_docx(save_path)
-
-    resp = {
-        "status": "success", 
-        "filename": file.filename,
-        "size": pdf_load_result.size,
-        "doc_len": pdf_load_result.doc_length,
-        "chunks": pdf_load_result.chunks_length,
-        "langs": pdf_load_result.lang
-    }
-
-    return resp
-
-@doc_app.route("/pptx", methods=["POST"])
-def pptxPost():
-    file = extract_file(request_object=request)
-    dir_path = "db/pptx/"
-    save_path = process_file(dir_path=dir_path, filename=file.filename)
-    pdf_load_result = services.llm_service.document_loader.load_pptx(save_path)
-
-    resp = {
-        "status": "success", 
-        "filename": file.filename,
-        "size": pdf_load_result.size,
-        "doc_len": pdf_load_result.doc_length,
-        "chunks": pdf_load_result.chunks_length,
-        "langs": pdf_load_result.lang
-    }
-
-    return resp
-
-@doc_app.route("/md", methods=["POST"])
-def mdPost():
-    file = extract_file(request_object=request)
-    dir_path = "db/md/"
-    save_path = process_file(dir_path=dir_path, filename=file.filename)
-    pdf_load_result = services.llm_service.document_loader.load_md(save_path)
-
-    resp = {
-        "status": "success", 
-        "filename": file.filename,
-        "size": pdf_load_result.size,
-        "doc_len": pdf_load_result.doc_length,
-        "chunks": pdf_load_result.chunks_length,
-        "langs": pdf_load_result.lang
-    }
-
-    return resp
-
-@doc_app.route("/html", methods=["POST"])
-def htmlPost():
-    file = extract_file(request_object=request)
-    dir_path = "db/html/"
-    save_path = process_file(dir_path=dir_path, filename=file.filename)
-    pdf_load_result = services.llm_service.document_loader.load_html(save_path)
-
-    resp = {
-        "status": "success", 
-        "filename": file.filename,
-        "size": pdf_load_result.size,
-        "doc_len": pdf_load_result.doc_length,
-        "chunks": pdf_load_result.chunks_length,
-        "langs": pdf_load_result.lang
-    }
 
     return resp

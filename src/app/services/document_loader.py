@@ -97,8 +97,6 @@ class DocumentLoader:
 
     def load_docx(self, path) -> DocumentLoadResult:
         size_bytes = os.path.getsize(path)
-
-        # doc = LcDocument(path)
         loader = UnstructuredWordDocumentLoader(path)
         docs = loader.load()
         chunks = self.text_splitter.split_documents(docs)
@@ -109,8 +107,6 @@ class DocumentLoader:
     
     def load_docx_session(self, path, file, session_db_path) -> DocumentLoadResult:
         size_bytes = os.path.getsize(path)
-
-        # doc = LcDocument(path)
         loader = UnstructuredWordDocumentLoader(path)
         docs = loader.load()
         chunks = self.text_splitter.split_documents(docs)
